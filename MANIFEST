@@ -3,3 +3,5 @@ MANIFEST
 Makefile.PL
 README
 lib/Constant/Generate.pm
+t/00-all.t
+test.pl

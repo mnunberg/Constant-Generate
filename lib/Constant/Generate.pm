@@ -1,8 +1,8 @@
 package Constant::Generate;
 use strict;
 use warnings;
-use Log::Fu { level => "debug" };
 our $VERSION  = 0.01;
+
 #these two functions produce reverse mapping, one for simple constants, and
 #one for bitfields
 
@@ -123,7 +123,6 @@ sub import {
 		}
 		
 		if(($auto_export || $auto_export_ok) && defined $export_tag) {
-			log_err("Hi!");
 			if(!defined ($h_etags ||= *{$reqpkg ."::EXPORT_TAGS"}{HASH}) ) {
 				die "Requested export with tags, but \%EXPORT_TAGS is not yet declared";
 			} else {
@@ -134,8 +133,6 @@ sub import {
 	if(%opts) {
 		die "Unknown keys " . join(",", keys %opts);
 	}
-	use Data::Dumper;
-	print Dumper(\%symhash);
 }
 
 __END__
@@ -291,3 +288,57 @@ If references are not used as values for these options, C<Constant::Generate>
 will expect you to have defined these modules already, and otherwise die.
 
 =back
+
+=head3 EXPORTING
+
+This module also allows you to define a 'constants' module of your own, from which
+you can export constants to other files in your package. Figuring out the right
+exporter parameters is quite hairy, and the export options can natually
+be a bit tricky.
+
+In order to succesfully export symbols made by this module, you must specify
+either C<-export_ok> or C<-export> as hash options to C<import>. These correspond
+to the like-named variables documented by L<Exporter>.
+
+Additionally, export tags can be specified only if one of the C<export> flags is
+set to true (again, following the behavior of C<Exporter>). The auto-export
+feature is merely one of syntactical convenience, but these three forms are
+effectively equivalent
+
+Nicest way:
+
+	use base qw(Exporter);
+	our (@EXPORT, %EXPORT_TAGS);
+	use Constant::Generate
+		[qw(FOO BAR BAZ)],
+		-export => 1,
+		-tag => "some_constants"
+	;
+	
+A bit more explicit:
+
+	use base qw(Exporter);
+	use Constant::Generate
+		[qw(FOO BAR BAZ)],
+		-export => \our @EXPORT,
+		-export_tags => \our %EXPORT_TAGS,
+		-tag => "some_constants",
+		-mapname => "some_constants_to_str",
+	;
+
+
+Or DIY
+
+	use base qw(Exporter);
+	our @EXPORT;
+	my @SYMS;
+	BEGIN {
+		@SYMS = qw(FOO BAR BAZ);
+	}
+	
+	use Constant::Generate \@SYMS, -mapname => "some_constants_to_str";
+	
+	push @EXPORT, @SYMS, "some_constants_to_str";
+	$EXPORT_TAGS{'some_constants'} = [@SYMS, "some_constants_to_str"];
+
+etc.
