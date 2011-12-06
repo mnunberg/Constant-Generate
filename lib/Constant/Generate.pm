@@ -1,7 +1,7 @@
 package Constant::Generate;
 use strict;
 use warnings;
-our $VERSION  = 0.01;
+our $VERSION  = 0.02;
 
 #these two functions produce reverse mapping, one for simple constants, and
 #one for bitfields
@@ -43,6 +43,7 @@ sub import {
 		foreach ($opt, "-$opt") { return delete $opts{$_} if (exists $opts{$_}) }
 	};
 	
+	#Determine if we are generating incremental integer or shift constants
 	my $type = _getopt("type");
 	if(!$type || $type =~ /int/i) {
 		$type = CONST_SIMPLE;
@@ -53,43 +54,49 @@ sub import {
 			die "Unrecognized type $type";
 		}
 	}
+	
+	#Determine our tag for %EXPORT_TAGS and reverse mapping
 	my $mapname = _getopt("mapname");
 	my $export_tag = _getopt("tag");
-	
-	if(!$mapname) {
+	if((!$mapname) && $export_tag) {
 		$mapname = $export_tag . "_to_str";
 	}
-	
-	######
 	my $generator = $type == CONST_BITFLAG ? \&_gen_bitfield_fn : \&_gen_plain_fn;
 	
 	
+	#Generate the values.
 	my %symhash;
-	
+	#Initial value
 	my $v = _getopt("start_at") || 0;
-	
+	#Is this value an actual number, or a left-shift factor
 	my $v_get_and_incr = $type == CONST_BITFLAG ? sub { 1 << $v++ } :
 		sub { $v++ };
-	
+	#This actually writes the constant to the symbol table
 	my $makesub = sub {
 		no strict "refs";
 		my ($name,$value) = @_;
 		*{fqcls($name)} = sub () { $value };
 	};
-
 	
+	#Figure out what are names are
 	if(ref $symspecs eq 'ARRAY') {
+		#Auto-generated values
 		foreach my $sym (@$symspecs) {
 			$symhash{$sym} = $v_get_and_incr->();
 		}
 	} else {
+		#Predefined (user-specified) values
 		%symhash = %$symspecs;
 	}
 	
+	#tie it all together
 	while (my ($symname,$symval) = each %symhash) {
 		$makesub->($symname, $symval);
 	}
 	
+	
+	#After we have determined values for all the symbols, we can establish our
+	#reverse mappings, if so requested
 	if($mapname) {
 		$generator->(fqcls($mapname), \%symhash);
 	}
@@ -122,7 +129,7 @@ sub import {
 			push @$a_ex, @symlist;
 		}
 		
-		if(($auto_export || $auto_export_ok) && defined $export_tag) {
+		if(($auto_export || $auto_export_ok) && $export_tag) {
 			if(!defined ($h_etags ||= *{$reqpkg ."::EXPORT_TAGS"}{HASH}) ) {
 				die "Requested export with tags, but \%EXPORT_TAGS is not yet declared";
 			} else {
