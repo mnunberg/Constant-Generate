@@ -40,6 +40,11 @@ use Constant::Generate
     -export_ok => 1,
     -export_tags => 1;
 
+
+use Constant::Generate
+    [qw(SIMPLE_ONE SIMPLE_TWO)],
+    export => 1;
+
 package User;
 use Test::More;
 

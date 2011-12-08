@@ -1,7 +1,9 @@
 package Constant::Generate;
 use strict;
 use warnings;
-our $VERSION  = 0.02;
+our $VERSION  = '0.04';
+
+use Data::Dumper;
 
 #these two functions produce reverse mapping, one for simple constants, and
 #one for bitfields
@@ -112,8 +114,9 @@ sub import {
 	}
 	
 	my @symlist = keys %symhash;
-	push @symlist, $mapname if defined $mapname;
+	push @symlist, $mapname if $mapname;
 	
+	#At this point, we will see how to inject stuff into [@%]EXPORT_?(?:OK|TAGS)
 	{
 		no strict 'refs';
 		
