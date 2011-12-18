@@ -1,7 +1,7 @@
 package Constant::Generate;
 use strict;
 use warnings;
-our $VERSION  = '0.10';
+our $VERSION  = '0.11';
 
 use Data::Dumper;
 use Carp qw(confess);
@@ -264,10 +264,9 @@ Constant::Generate - Common tasks for symbolic constants
 =head2 SYNOPSIS
 
 Simplest use
+	use Constant::Generate [ qw(CONST_FOO CONST_BAR) ];
+	printf( "FOO=%d, BAR=%d\n", CONST_FOO, CONST_BAR );
 	
-	use Constant::Generate [qw(CONST_FOO CONST_BAR) ];
-	printf("FOO=%d, BAR=%d\n", CONST_FOO, CONST_BAR);
-
 Bitflags:
 
 	use Constant::Generate [qw(ANNOYING STRONG LAZY)], type => 'bitflags';
@@ -309,7 +308,7 @@ DWIM Constants
 		WRONLY	=> 01,
 		RDWR	=> 02,
 		CREAT	=> 0100
-	}, -stringy_vars => 1, -prefix => 'O_';
+	}, -prefix => 'O_';
 	
 	my $oflags = O_RDWR|O_CREAT;
 	O_RDWR eq 'RDWR';
@@ -371,7 +370,7 @@ For bitflags, it is possible to specify C<type => 'bitfield'> in the L</Options>
 which will modify the auto-generation of the constants as well as provide
 suitable output for reverse mapping functions.
 
-=head3 Options
+=head3 Basic Options
 
 The second argument to the import function is a hash of options.
 
@@ -460,6 +459,16 @@ display only the 'bare', user-specified name. Thus:
 	
 Setting C<show_prefix> to a true value will display the full name.
 
+=back
+
+=head3 Dual-Var Constants
+
+Use of dual variable constants (which return an integer or string value depending
+on the context) can be enabled by passing C<stringy_vars> to C<Constant::Generate>,
+or using C<Constant::Generate::Stringified>:
+
+=over
+
 =item stringy_vars
 
 This will apply some trickery to the values returned by the constant symbols.
@@ -484,6 +493,19 @@ some meaningful string form. In particular, it will only work on scalars which
 are directly descended from the constant symbols. Paritcularly, this means that
 unpack()ing or receiving data from a different process will not result in these
 special stringy variables.
+
+It is an error to use both C<stringy_vars> as an option to
+C<Constant::Generate::Stringified>
+
+=back
+
+
+=head3 Listings
+
+The following options enable constant subroutines which return lists of the
+symbols or their values:
+
+=over
 
 =item allvalues
 
@@ -553,6 +575,7 @@ Or DIY
 etc.
 
 
-Also note that any L</listname> or L</mapname> subroutines will be exported according
+Also note that any L</allvalues>, L</allsyms>, or L</mapname>
+subroutines will be exported according
 to whatever specifications were configured for the constants themselves.
 
