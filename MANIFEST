@@ -3,5 +3,12 @@ MANIFEST
 Makefile.PL
 README
 lib/Constant/Generate.pm
+lib/Constant/Generate/Stringified.pm
+
 t/00-all.t
+t/01-strings.t
+t/02-dualvar.t
+t/03-listings.t
+t/99-synopsis.t
+
 test.pl

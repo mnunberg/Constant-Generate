@@ -1,145 +1,255 @@
 package Constant::Generate;
 use strict;
 use warnings;
-our $VERSION  = '0.04';
+our $VERSION  = '0.10';
 
 use Data::Dumper;
+use Carp qw(confess);
+use Constant::Generate::Stringified;
+use Scalar::Util qw(looks_like_number);
 
 #these two functions produce reverse mapping, one for simple constants, and
 #one for bitfields
 
-sub _gen_bitfield_fn {
-	no strict "refs";
-	my ($name,$hashref) = @_;
-	*{$name} = sub {
-		my $flag = shift;
-		join("|", grep { $flag & $hashref->{$_} } (keys %$hashref)) || "";
-	};
-}
-
-sub _gen_plain_fn {
-	no strict "refs";
-	my ($name,$hashref) = @_;
-	my %reversed = reverse(%$hashref);
-	*{$name} = sub { 
-		$reversed{$_[0]} || "";
-	};
-}
-
-sub fqcls ($); #predeclare
-sub _getopt; #predeclare
-
 use constant {
 	CONST_BITFLAG 	=> 1,
-	CONST_SIMPLE	=> 2
+	CONST_SIMPLE	=> 2,
+	CONST_STRING	=> 3
 };
 
-sub import {
-	my ($cls,$symspecs,%opts) = @_;
-	#die "This module is useless without options" unless %opts;
-	my $reqpkg = caller();
-	
-	local *fqcls = sub ($) { $reqpkg . "::" . shift };
-	local *_getopt = sub {
-		my $opt = shift;
-		foreach ($opt, "-$opt") { return delete $opts{$_} if (exists $opts{$_}) }
+
+sub _gen_bitfield_fn {
+	no strict "refs";
+	my ($name,$rhash) = @_;
+	*{$name} = sub($) {
+		my $flag = $_[0];
+		join("|",
+			 @{$rhash}{(
+				grep($flag & $_, keys %$rhash)
+			 )}
+		);
 	};
-	
-	#Determine if we are generating incremental integer or shift constants
-	my $type = _getopt("type");
-	if(!$type || $type =~ /int/i) {
-		$type = CONST_SIMPLE;
+}
+
+sub _gen_int_fn {
+	no strict 'refs';
+	my ($name,$rhash) = @_;
+	*{$name} = sub ($) { $rhash->{$_[0] + 0} || "" };
+}
+
+sub _gen_str_fn {
+	no strict 'refs';
+	my ($name,$rhash) = @_;
+	*{$name} = sub ($) { $rhash->{ $_[0] } || "" };
+}
+
+
+sub _gen_integer_syms {
+	my ($uarr, $symhash, $start) = @_;
+	foreach my $sym (@$uarr) {
+		$symhash->{$sym} = $start;
+		$start++;
+	}
+}
+
+sub _gen_bitflag_syms {
+	my ($uarr,$symhash,$start) = @_;
+	foreach my $sym (@$uarr) {
+		$symhash->{$sym} = 1 << $start;
+		$start++;
+	}
+}
+
+sub _gen_string_syms {
+	my ($uarr,$symhash,$prefix) = @_;
+	foreach my $sym (@$uarr) {
+		$symhash->{$sym} = $sym;
+	}
+}
+
+sub _gen_constant {
+	my ($pkg,$name,@values) = @_;
+	no strict 'refs';
+	my $fqname = $pkg . "::$name";
+	if(@values == 1) {
+		*{$fqname} = sub () { $values[0] };
 	} else {
-		if ($type =~ /bit/i) {
-			$type = CONST_BITFLAG;
+		*{$fqname} = sub () { @values };
+	}
+}
+
+sub _gen_map_rhash {
+	my ($symhash, $prefix, $display_prefix) = @_;
+	my (%maphash,%rhash);
+	if($prefix && $display_prefix) {
+		while (my ($sym,$val) = each %$symhash) {
+			$maphash{$prefix.$sym} = $val;
+		}
+	} else {
+		%maphash = %$symhash;
+	}
+	
+	#Check for duplicate constants pointing to the same value
+	while (my ($sym,$val) = each %maphash) {
+		push @{$rhash{$val}}, $sym;
+	}
+	while (my ($val,$syms) = each %rhash) {
+		if(@$syms > 1) {
+			$rhash{$val} = sprintf("(%s)", join(",", @$syms));
 		} else {
-			die "Unrecognized type $type";
+			$rhash{$val} = $syms->[0];
+		}
+	}
+	return \%rhash;
+}
+
+sub _mangle_exporter {
+	my ($pkg, $symlist, $tag,
+		$uspec_export, $uspec_export_ok, $uspec_export_tags) = @_;
+	
+	my @emap = (
+		[$uspec_export, \my $my_export, 'EXPORT', 'ARRAY'],
+		[$uspec_export_ok, \my $my_export_ok, 'EXPORT_OK', 'ARRAY'],
+		[$uspec_export_tags, \my $my_export_tags, 'EXPORT_TAGS', 'HASH', \$tag]
+	);
+	
+	foreach (@emap) {
+		my ($uspec,$myspec,$pvar,$vtype,$depvar) = @$_;
+		if(!$uspec) {
+			next;
+		}
+		if (defined $depvar && !$$depvar) {
+			next;
+		}
+		if(ref $uspec) {
+			$$myspec = $uspec;
+		} else {
+			no strict 'refs';
+			if(!defined ($$myspec = *{$pkg."::$pvar"}{$vtype})) {
+				confess "Requested mangling of $pvar, but $pvar not yet declared!";
+			}
 		}
 	}
 	
+	if($uspec_export_ok) {
+		push @$my_export_ok, @$symlist;
+	}
+	if($uspec_export) {
+		push @$my_export, @$symlist;
+	}
+	if($uspec_export_tags) {
+		$my_export_tags->{$tag} = [ @$symlist ];
+	}
+	#Verify the required variables 
+}
+
+my $FN_CONST_TBL = {
+	CONST_BITFLAG, \&_gen_bitflag_syms,
+	CONST_SIMPLE, \&_gen_integer_syms,
+	CONST_STRING, \&_gen_string_syms
+};
+
+my $FN_RMAP_TBL = {
+	CONST_BITFLAG, \&_gen_bitfield_fn,
+	CONST_SIMPLE, \&_gen_int_fn,
+	CONST_STRING, \&_gen_str_fn,
+};
+
+sub utype2const {
+	my $utype = shift;
+	if(!$utype || $utype =~ /int/i) {
+		return CONST_SIMPLE;
+	} elsif ($utype =~ /bit/i) {
+		return CONST_BITFLAG;
+	} elsif ($utype =~ /str/i) {
+		return CONST_STRING;
+	} else {
+		die "Unrecognized type '$utype'";
+	}
+}
+
+sub _getopt(\%$) {
+	my ($h,$opt) = @_;
+	foreach ($opt,"-$opt") { return delete $h->{$_} if exists $h->{$_} }
+}
+
+sub import {
+	my ($cls,$symspecs,%opts) = @_;
+	return 1 unless $symspecs;
+	
+	my $reqpkg = caller();
+	my $type = utype2const(_getopt(%opts, "type"));
+	
 	#Determine our tag for %EXPORT_TAGS and reverse mapping
-	my $mapname = _getopt("mapname");
-	my $export_tag = _getopt("tag");
+	
+	my $mapname 		= _getopt(%opts, "mapname");
+	my $export_tag 		= _getopt(%opts, "tag");
+	my $prefix			= _getopt(%opts, "prefix") || "";
+	my $display_prefix 	= _getopt(%opts, "show_prefix");
+	my $start 			= _getopt(%opts, "start_at") || 0;
+	my $stringy			= _getopt(%opts, "stringy_vars");
+	my $listname		= _getopt(%opts, "allvalues");
+	my $symsname		= _getopt(%opts, "allsyms");
+	
 	if((!$mapname) && $export_tag) {
 		$mapname = $export_tag . "_to_str";
-	}
-	my $generator = $type == CONST_BITFLAG ? \&_gen_bitfield_fn : \&_gen_plain_fn;
-	
+	}	
 	
 	#Generate the values.
 	my %symhash;
 	#Initial value
-	my $v = _getopt("start_at") || 0;
-	#Is this value an actual number, or a left-shift factor
-	my $v_get_and_incr = $type == CONST_BITFLAG ? sub { 1 << $v++ } :
-		sub { $v++ };
-	#This actually writes the constant to the symbol table
-	my $makesub = sub {
-		no strict "refs";
-		my ($name,$value) = @_;
-		*{fqcls($name)} = sub () { $value };
-	};
 	
-	#Figure out what are names are
-	if(ref $symspecs eq 'ARRAY') {
-		#Auto-generated values
-		foreach my $sym (@$symspecs) {
-			$symhash{$sym} = $v_get_and_incr->();
-		}
-	} else {
-		#Predefined (user-specified) values
-		%symhash = %$symspecs;
-	}
+	ref $symspecs eq 'HASH' ? %symhash = %$symspecs :
+		$FN_CONST_TBL->{$type}->($symspecs, \%symhash, $start);
 	
 	#tie it all together
-	while (my ($symname,$symval) = each %symhash) {
-		$makesub->($symname, $symval);
-	}
 	
+	while (my ($symname,$symval) = each %symhash) {
+		if($stringy && looks_like_number($symval)) {
+			
+			my $dv_name = $display_prefix ? $prefix . $symname : $symname;
+			
+			$symval = Constant::Generate::Stringified::CG_dualvar(
+				$symval, $dv_name);
+		}
+		_gen_constant($reqpkg, $prefix.$symname, $symval);
+	}
 	
 	#After we have determined values for all the symbols, we can establish our
 	#reverse mappings, if so requested
 	if($mapname) {
-		$generator->(fqcls($mapname), \%symhash);
+		my $rhash = _gen_map_rhash(\%symhash, $prefix, $display_prefix);
+		$FN_RMAP_TBL->{$type}->($reqpkg."::$mapname", $rhash);
 	}
 	
-	my $auto_export = _getopt("export");
-	my $auto_export_ok = _getopt("export_ok");
-	my $a_exok = $auto_export_ok;
-	my $a_ex = $auto_export;
-	my $h_etags = _getopt("export_tags");
-	
-	foreach (\$a_ex, \$a_exok, \$h_etags) {
-		$$_ = ref $$_ ? $$_ : undef;
+	if($prefix) {
+		foreach my $usym (keys %symhash) {
+			my $v = delete $symhash{$usym};
+			$symhash{$prefix.$usym} = $v;
+		}
 	}
 	
+	my $auto_export = _getopt(%opts, "export");
+	my $auto_export_ok = _getopt(%opts, "export_ok");
+	my $h_etags = _getopt(%opts, "export_tags");
+		
 	my @symlist = keys %symhash;
-	push @symlist, $mapname if $mapname;
 	
-	#At this point, we will see how to inject stuff into [@%]EXPORT_?(?:OK|TAGS)
-	{
-		no strict 'refs';
-		
-		if($auto_export_ok &&
-		   !defined ($a_exok ||= *{$reqpkg."::EXPORT_OK"}{ARRAY})) {
-			die "Requested export_ok but \@EXPORT_OK not yet declared";
-		} else {
-			push @$a_exok, @symlist;
-		}
-		if($auto_export && !defined ($a_ex ||= *{$reqpkg."::EXPORT"}{ARRAY})) {
-			die "Requested export but \@EXPORT is not yet declared";
-		} else {
-			push @$a_ex, @symlist;
-		}
-		
-		if(($auto_export || $auto_export_ok) && $export_tag) {
-			if(!defined ($h_etags ||= *{$reqpkg ."::EXPORT_TAGS"}{HASH}) ) {
-				die "Requested export with tags, but \%EXPORT_TAGS is not yet declared";
-			} else {
-				$h_etags->{$export_tag} = [ @symlist ];
-			}
-		}
+	if($listname) {
+		my %tmp = reverse %symhash;
+		_gen_constant($reqpkg, $listname, keys %tmp);
+		push @symlist, $listname;
 	}
+	if($symsname) {
+		_gen_constant($reqpkg, $symsname, keys %symhash);
+		push @symlist, $symsname;
+	}
+	
+	push @symlist, $mapname if $mapname;
+	_mangle_exporter($reqpkg, \@symlist,
+					 $export_tag,
+					 $auto_export, $auto_export_ok, $h_etags || $export_tag);
+
 	if(%opts) {
 		die "Unknown keys " . join(",", keys %opts);
 	}
@@ -160,7 +270,7 @@ Simplest use
 
 Bitflags:
 
-	use Constant::Generate qw(ANNOYING STRONG LAZY), type => 'bitflags';
+	use Constant::Generate [qw(ANNOYING STRONG LAZY)], type => 'bitflags';
 	my $state = (ANNOYING|LAZY);
 	$state & STRONG == 0;
 
@@ -187,11 +297,41 @@ Generate reverse maps, but do not generate values. also, push to exporter
 		O_WRONLY => 01,
 		O_RDWR	 => 02,
 		O_CREAT  => 0100
-	}, tag => "openflags", "export_ok" => \@EXPORT_OK;
+	}, tag => "openflags", -type => 'bits';
 	
 	my $oflags = O_RDWR|O_CREAT;
 	print openflags_to_str($oflags); #prints 'O_RDWR|O_CREAT';
+	
+DWIM Constants
 
+	use Constant::Generate::Stringified {
+		RDONLY	=> 00,
+		WRONLY	=> 01,
+		RDWR	=> 02,
+		CREAT	=> 0100
+	}, -stringy_vars => 1, -prefix => 'O_';
+	
+	my $oflags = O_RDWR|O_CREAT;
+	O_RDWR eq 'RDWR';
+
+Export to other packages
+
+	package My::Constants
+	BEGIN { $INC{'My/Constants.pm} = 1; }
+	
+	use base qw(Exporter);
+	our (@EXPORT_OK,@EXPORT,%EXPORT_TAGS);
+	
+	use Constant::Generate [qw(FOO BAR BAZ)],
+		tag => "my_constants",
+		export_ok => 1;
+		
+	package My::User;
+	use My::Constants qw(:my_constants);
+	FOO == 0 && BAR == 1 && BAZ == 2 &&
+		my_constants_to_str(FOO eq 'FOO') && my_constants_to_str(BAR eq 'BAR') &&
+			my_constants_to_str(BAZ eq 'BAZ');
+	
 =head2 DESCRIPTION
 
 C<Constant::Generate> provides useful utilities for handling, debugging, and
@@ -243,6 +383,8 @@ This specifies the type of constant used in the enumeration for the first
 argument as well as the generation of reverse mapping functions.
 Valid values are ones matching the regular expression C</bit/i> for
 bitfield values, and ones matching C</int/i> for simple integer values.
+
+You can also specify C</str/i> for string constants.
 
 If C<type> is not specified, it defaults to integer values.
 
@@ -296,6 +438,63 @@ objects corresponding to the appropriate variables.
 
 If references are not used as values for these options, C<Constant::Generate>
 will expect you to have defined these modules already, and otherwise die.
+
+=item prefix
+
+Set this to a string to be prefixed to all constant names declared in the symbol
+specification; thus the following are equivalent
+
+	use Constant::Generate [qw( MY_FOO MY_BAR MY_BAZ )];
+	
+With auto-prefixing:
+
+	use Constant::Generate [qw( FOO BAR BAZ )], prefix => "MY_";
+
+=item show_prefix
+
+When prefixes are specified, the default is that reverse mapping functions will
+display only the 'bare', user-specified name. Thus:
+
+	use Constant::Generate [qw( FOO )], -prefix => "MY_", -mapname => "const_str";
+	const_str(MY_FOO) eq 'FOO';
+	
+Setting C<show_prefix> to a true value will display the full name.
+
+=item stringy_vars
+
+This will apply some trickery to the values returned by the constant symbols.
+
+Normally, constant symbols will return only their numeric value, and a reverse
+mapping function is needed to retrieve the original symbolic name.
+
+When C<stringy_vars> is set to a true value, OR if one C<use>s
+C<Constant::Generate::Stringified>, the values returned by the constant subroutine
+will do the right thing in string and numeric contexts; thus:
+
+	use Constant::Generate::Stringified [qw(FOO BAR)];
+	
+	FOO eq 'FOO';
+	FOO == 0;
+
+The L</show_prefix> option controls whether the prefix is part of the stringified
+form.
+
+Do not rely too much on C<stringy_vars> to magically convert any number into
+some meaningful string form. In particular, it will only work on scalars which
+are directly descended from the constant symbols. Paritcularly, this means that
+unpack()ing or receiving data from a different process will not result in these
+special stringy variables.
+
+=item allvalues
+
+Sometimes it is convenient to have a list of all the constants defined in the
+enumeration. Setting C<allvalues> will make C<Constant::Generate> create a like-named
+constant subroutine which will return a list of all the I<values> created.
+
+=item allsyms
+
+Like L</allvalues>, but will return a list of strings for the constants in
+the enumeration.
 
 =back
 
@@ -352,3 +551,8 @@ Or DIY
 	$EXPORT_TAGS{'some_constants'} = [@SYMS, "some_constants_to_str"];
 
 etc.
+
+
+Also note that any L</listname> or L</mapname> subroutines will be exported according
+to whatever specifications were configured for the constants themselves.
+

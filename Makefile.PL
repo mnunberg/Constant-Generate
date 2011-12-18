@@ -13,7 +13,8 @@ WriteMakefile(
     PL_FILES            => {},
     PREREQ_PM => {
         'Test::More' => 0,
-        'constant'   => 1.17
+        'constant'   => 1.17,
+        'Scalar::Util' => 1.20
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Constant-Generate-*' },
