@@ -6,3 +6,4 @@ Revision history for Constant-Generate
 0.04    Updated dependency for constant.pm
 0.10    Stringy options, listings
 0.11    Fixed some documentation
+0.12	Explained listings a bit better

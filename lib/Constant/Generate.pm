@@ -1,7 +1,7 @@
 package Constant::Generate;
 use strict;
 use warnings;
-our $VERSION  = '0.11';
+our $VERSION  = '0.12';
 
 use Data::Dumper;
 use Carp qw(confess);
@@ -16,7 +16,6 @@ use constant {
 	CONST_SIMPLE	=> 2,
 	CONST_STRING	=> 3
 };
-
 
 sub _gen_bitfield_fn {
 	no strict "refs";
@@ -264,6 +263,7 @@ Constant::Generate - Common tasks for symbolic constants
 =head2 SYNOPSIS
 
 Simplest use
+
 	use Constant::Generate [ qw(CONST_FOO CONST_BAR) ];
 	printf( "FOO=%d, BAR=%d\n", CONST_FOO, CONST_BAR );
 	
@@ -383,13 +383,15 @@ argument as well as the generation of reverse mapping functions.
 Valid values are ones matching the regular expression C</bit/i> for
 bitfield values, and ones matching C</int/i> for simple integer values.
 
-You can also specify C</str/i> for string constants.
+You can also specify C</str/i> for string constants. When the symbol specification
+is an array, the value for the string constants will be the strings themselves.
 
 If C<type> is not specified, it defaults to integer values.
 
 =item C<start_at>
 
-Only valid for auto-generated values. This specifies the starting value for the
+Only valid for auto-generated numeric values.
+This specifies the starting value for the
 first constant of the enumeration. If the enumeration is a bitfield, then the
 value is a factor by which to left-shift 1, thus
 	
@@ -438,7 +440,7 @@ objects corresponding to the appropriate variables.
 If references are not used as values for these options, C<Constant::Generate>
 will expect you to have defined these modules already, and otherwise die.
 
-=item prefix
+=item C<prefix>
 
 Set this to a string to be prefixed to all constant names declared in the symbol
 specification; thus the following are equivalent
@@ -449,7 +451,7 @@ With auto-prefixing:
 
 	use Constant::Generate [qw( FOO BAR BAZ )], prefix => "MY_";
 
-=item show_prefix
+=item C<show_prefix>
 
 When prefixes are specified, the default is that reverse mapping functions will
 display only the 'bare', user-specified name. Thus:
@@ -469,7 +471,7 @@ or using C<Constant::Generate::Stringified>:
 
 =over
 
-=item stringy_vars
+=item C<stringy_vars>
 
 This will apply some trickery to the values returned by the constant symbols.
 
@@ -505,15 +507,58 @@ C<Constant::Generate::Stringified>
 The following options enable constant subroutines which return lists of the
 symbols or their values:
 
+	use Constant::Generate [qw(
+		FOO BAR BAZ
+	)],
+		allvalues => "VALS",
+		allsyms => "SYMS";
+	
+	printf "VALUES: %s\n", join(", ", VALUES);
+	# => 0, 1, 2 (in no particular order)
+	
+	printf "SYMBOLS: %s\n", join(", ", SYMS);
+	# => FOO, BAR, BAZ (in no particular order)
+	
+Or something potentially more useful:
+
+	use Constant::Generate [qw(
+		COUGH
+		SNEEZE
+		HICCUP
+		ZOMBIES
+		)],
+	-type => 'bit',
+	-allvalues => 'symptoms',
+	-mapname => "symptom_str";
+	
+	my $remedies = {
+		COUGH, "Take some honey",
+		SNEEZE, "Buy some tissues",
+		HICCUP, "Drink some water"
+	};
+	
+	my $patient = SNEEZE | COUGH | ZOMBIES;
+	
+	foreach my $symptom (symptoms()) {
+		next unless $patient & $symptom;
+		my $remedy = $remedies->{$symptom};
+		if(!$remedy) {
+			printf "Uh-Oh, we don't have a remedy for %s. Go to a hospital!\n",
+			symptom_str($symptom);
+		} else {
+			printf "You should: %s\n", $remedy;
+		}
+	}
+
 =over
 
-=item allvalues
+=item C<allvalues>
 
 Sometimes it is convenient to have a list of all the constants defined in the
 enumeration. Setting C<allvalues> will make C<Constant::Generate> create a like-named
 constant subroutine which will return a list of all the I<values> created.
 
-=item allsyms
+=item C<allsyms>
 
 Like L</allvalues>, but will return a list of strings for the constants in
 the enumeration.
@@ -578,4 +623,16 @@ etc.
 Also note that any L</allvalues>, L</allsyms>, or L</mapname>
 subroutines will be exported according
 to whatever specifications were configured for the constants themselves.
+
+=head1 BUGS & TODO
+
+It's somewhat ironic that a module which aims to promote the use of symbolic
+constants has all of its configuration options determined by hashes and strings.
+
+=head1 AUTHOR & COPYRIGHT
+
+Copyright (c) 2011 by M. Nunberg
+
+You may use and distribute this software under the same terms and conditions as
+Perl itself, OR under the terms and conditions of the GNU GPL, version 2 or greater.
 
