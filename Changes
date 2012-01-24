@@ -1,9 +1,14 @@
 Revision history for Constant-Generate
 
-0.01    Date/time
-        First version, released on an unsuspecting world.
+0.15    Some minor API tweaks:
+        added 'dualvar' option, fixed POD errors,
+        changed ::Stringified to ::Dualvar
+        
+        https://rt.cpan.org/Ticket/Display.html?id=74247
+        https://rt.cpan.org/Ticket/Display.html?id=74249
+        https://rt.cpan.org/Ticket/Display.html?id=74235
 
-0.04    Updated dependency for constant.pm
-0.10    Stringy options, listings
-0.11    Fixed some documentation
 0.12	Explained listings a bit better
+0.11    Fixed some documentation
+0.10    Stringy options, listings
+0.04    Updated dependency for constant.pm
