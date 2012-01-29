@@ -71,7 +71,8 @@ sub _gen_constant {
 	no strict 'refs';
 	my $fqname = $pkg . "::$name";
 	if(@values == 1) {
-		*{$fqname} = sub () { $values[0] };
+        my $value = $values[0];
+		*{$fqname} = sub () { $value };
 	} else {
 		*{$fqname} = sub () { @values };
 	}
