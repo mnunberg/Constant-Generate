@@ -267,83 +267,83 @@ Constant::Generate - Common tasks for symbolic constants
 
 Simplest use
 
-	use Constant::Generate [ qw(CONST_FOO CONST_BAR) ];
-	printf( "FOO=%d, BAR=%d\n", CONST_FOO, CONST_BAR );
+  use Constant::Generate [ qw(CONST_FOO CONST_BAR) ];
+  printf( "FOO=%d, BAR=%d\n", CONST_FOO, CONST_BAR );
 	
 Bitflags:
 
-	use Constant::Generate [qw(ANNOYING STRONG LAZY)], type => 'bits';
-	my $state = (ANNOYING|LAZY);
-	$state & STRONG == 0;
+  use Constant::Generate [qw(ANNOYING STRONG LAZY)], type => 'bits';
+  my $state = (ANNOYING|LAZY);
+  $state & STRONG == 0;
 
 With reverse mapping:
 
-	use Constant::Generate
-		[qw(CLIENT_IRSSI CLIENT_XCHAT CLIENT_PURPLE)],
-		type => "bits",
-		mapname => "client_type_to_str";
-	
-	my $client_type = CLIENT_IRSSI | CLIENT_PURPLE;
-	
-	print client_type_to_str($client_type); #prints 'CLIENT_IRSSI|CLIENT_PURPLE';
-	
+  use Constant::Generate
+    [qw(CLIENT_IRSSI CLIENT_XCHAT CLIENT_PURPLE)],
+    type => "bits",
+    mapname => "client_type_to_str";
+  
+  my $client_type = CLIENT_IRSSI | CLIENT_PURPLE;
+  
+  print client_type_to_str($client_type); #prints 'CLIENT_IRSSI|CLIENT_PURPLE';
+
 Generate reverse maps, but do not generate values. also, push to exporter
 
-	#Must define @EXPORT_OK and tags beforehand
-	
-	our @EXPORT_OK;
-	our %EXPORT_TAGS;
-	
-	use Constant::Generate {
-		O_RDONLY => 00,
-		O_WRONLY => 01,
-		O_RDWR	 => 02,
-		O_CREAT  => 0100
-	}, tag => "openflags", type => 'bits';
-	
-	my $oflags = O_RDWR|O_CREAT;
-	print openflags_to_str($oflags); #prints 'O_RDWR|O_CREAT';
-	
+  #Must define @EXPORT_OK and tags beforehand
+  
+  our @EXPORT_OK;
+  our %EXPORT_TAGS;
+  
+  use Constant::Generate {
+    O_RDONLY => 00,
+    O_WRONLY => 01,
+    O_RDWR	 => 02,
+    O_CREAT  => 0100
+  }, tag => "openflags", type => 'bits';
+  
+  my $oflags = O_RDWR|O_CREAT;
+  print openflags_to_str($oflags); #prints 'O_RDWR|O_CREAT';
+
 DWIM Constants
 
-	use Constant::Generate {
-		RDONLY	=> 00,
-		WRONLY	=> 01,
-		RDWR	=> 02,
-		CREAT	=> 0100
-	}, prefix => 'O_', dualvar => 1;
-	
-	my $oflags = O_RDWR|O_CREAT;
-	O_RDWR eq 'RDWR';
+  use Constant::Generate {
+    RDONLY  => 00,
+    WRONLY  => 01,
+    RDWR    => 02,
+    CREAT   => 0100
+  }, prefix => 'O_', dualvar => 1;
+  
+  my $oflags = O_RDWR|O_CREAT;
+  O_RDWR eq 'RDWR';
 
 Export to other packages
 
-	package My::Constants
-	BEGIN { $INC{'My/Constants.pm} = 1; }
-	
-	use base qw(Exporter);
-	our (@EXPORT_OK,@EXPORT,%EXPORT_TAGS);
-	
-	use Constant::Generate [qw(FOO BAR BAZ)],
-		tag => "my_constants",
-		export_ok => 1;
-		
-	package My::User;
-	use My::Constants qw(:my_constants);
-	FOO == 0 && BAR == 1 && BAZ == 2 &&
-		my_constants_to_str(FOO eq 'FOO') && my_constants_to_str(BAR eq 'BAR') &&
-			my_constants_to_str(BAZ eq 'BAZ');
-	
+  package My::Constants
+  BEGIN { $INC{'My/Constants.pm} = 1; }
+  
+  use base qw(Exporter);
+  our (@EXPORT_OK,@EXPORT,%EXPORT_TAGS);
+  
+  use Constant::Generate [qw(FOO BAR BAZ)],
+        tag => "my_constants",
+        export_ok => 1;
+  
+  package My::User;
+  use My::Constants qw(:my_constants);
+  FOO == 0 && BAR == 1 && BAZ == 2 &&
+        my_constants_to_str(FOO eq 'FOO') && my_constants_to_str(BAR eq 'BAR') &&
+        my_constants_to_str(BAZ eq 'BAZ');
+
 =head2 DESCRIPTION
 
 C<Constant::Generate> provides useful utilities for handling, debugging, and
 generating opaque, 'magic-cookie' type constants as well as value-significant
 constants.
 
-At its simplest interface, it will generate a simple enumeration of names passed
-to it on import.
+Using its simplest interface,
+it will generate a simple enumeration of names passed to it on import.
 
-Read import options to use
+Read import options to use.
 
 =head2 USAGE
 
@@ -351,8 +351,8 @@ All options and configuration for this module are specified at import time.
 
 The canonical usage of this module is
 	
-	use Constant::Generate $symspec, %options;
-	
+  use Constant::Generate $symspec, %options;
+
 =head3 Symbol Specifications
 
 This is passed as the first argument to C<import> and can exist as a reference
@@ -397,25 +397,24 @@ If C<type> is not specified, it defaults to integer values.
 =item C<start_at>
 
 Only valid for auto-generated numeric values.
-This specifies the starting value for the
-first constant of the enumeration. If the enumeration is a bitfield, then the
+This specifies the starting value for the first constant of the enumeration.
+If the enumeration is a bitfield, then the
 value is a factor by which to left-shift 1, thus
 	
-	use Constant::Generate [qw(OPT_FOO OPT_BAR)], type => "bits";
-	
-	OPT_FOO == 1 << 0;
-	OPT_BAR == 1 << 1;
-	#are true
-	
+  use Constant::Generate [qw(OPT_FOO OPT_BAR)], type => "bits";
+  
+  OPT_FOO == 1 << 0;
+  OPT_BAR == 1 << 1;
+  #are true
+
 and so on.
 
 For non-bitfield values, this is simply a counter:
 
-	use Constant::Generate [qw(CONST_FOO CONST_BAR)], start_at => 42;
-	
-	CONST_FOO == 42;
-	CONST_BAR == 43;
-
+  use Constant::Generate [qw(CONST_FOO CONST_BAR)], start_at => 42;
+  
+  CONST_FOO == 42;
+  CONST_BAR == 43;
 
 =item C<tag>
 
@@ -429,10 +428,10 @@ under which symbols will be exported via C<%EXPORT_TAGS>.
 Specify the name of the reverse mapping function for the enumeration. If this is
 omitted, it will default to the form
 
-	$tag . "_to_str";
-	
+  $tag . "_to_str";
+
 where C<$tag> is the L</tag> option passed. If neither are specified, then a
-reverse mapping function will not be generated
+reverse mapping function will not be generated.
 
 =item C<export>, C<export_ok>, C<export_tags>
 
@@ -440,8 +439,8 @@ This group of options specifies the usage and modification of
 C<@EXPORT>, C<@EXPORT_OK> and C<%EXPORT_TAGS> respectively,
 which are used by L<Exporter>.
 
-Values for these options should either be simple scalar booleans, or reference
-objects corresponding to the appropriate variables.
+Values for these options should either be simple scalar booleans,
+or reference objects corresponding to the appropriate variables.
 
 If references are not used as values for these options, C<Constant::Generate>
 will expect you to have defined these modules already, and otherwise die.
@@ -449,22 +448,22 @@ will expect you to have defined these modules already, and otherwise die.
 =item C<prefix>
 
 Set this to a string to be prefixed to all constant names declared in the symbol
-specification; thus the following are equivalent
+specification; thus the following are equivalent:
 
-	use Constant::Generate [qw( MY_FOO MY_BAR MY_BAZ )];
-	
+  use Constant::Generate [qw( MY_FOO MY_BAR MY_BAZ )];
+
 With auto-prefixing:
 
-	use Constant::Generate [qw( FOO BAR BAZ )], prefix => "MY_";
+  use Constant::Generate [qw( FOO BAR BAZ )], prefix => "MY_";
 
 =item C<show_prefix>
 
 When prefixes are specified, the default is that reverse mapping functions will
 display only the 'bare', user-specified name. Thus:
 
-	use Constant::Generate [qw( FOO )], prefix => "MY_", mapname => "const_str";
-	const_str(MY_FOO) eq 'FOO';
-	
+  use Constant::Generate [qw( FOO )], prefix => "MY_", mapname => "const_str";
+  const_str(MY_FOO) eq 'FOO';
+
 Setting C<show_prefix> to a true value will display the full name.
 
 =back
@@ -473,7 +472,7 @@ Setting C<show_prefix> to a true value will display the full name.
 
 Use of dual variable constants (which return an integer or string value depending
 on the context) can be enabled by passing C<stringy_vars> to C<Constant::Generate>,
-or using C<Constant::Generate::Stringified>:
+or using C<Constant::Generate::Dualvar>:
 
 =over
 
@@ -489,10 +488,10 @@ mapping function is needed to retrieve the original symbolic name.
 When C<dualvar> is set to a true value the values returned by the constant
 subroutine will do the right thing in string and numeric contexts; thus:
 
-	use Constant::Generate::Stringified [qw(FOO BAR)];
-	
-	FOO eq 'FOO';
-	FOO == 0;
+  use Constant::Generate::Dualvar [qw(FOO BAR)];
+  
+  FOO eq 'FOO';
+  FOO == 0;
 
 The L</show_prefix> option controls whether the prefix is part of the stringified
 form.
@@ -503,58 +502,58 @@ are directly descended from the constant symbols. Paritcularly, this means that
 unpack()ing or receiving data from a different process will not result in these
 special stringy variables.
 
-The C<stringy_vars> is an alias to C<dualvar>
+The C<stringy_vars> option is an alias for C<dualvar>,
+which is supported for backwards compatibility.
 
 =back
-
 
 =head3 Listings
 
 The following options enable constant subroutines which return lists of the
 symbols or their values:
 
-	use Constant::Generate [qw(
-		FOO BAR BAZ
-	)],
-		allvalues => "VALS",
-		allsyms => "SYMS";
-	
-	printf "VALUES: %s\n", join(", ", VALUES);
-	# => 0, 1, 2 (in no particular order)
-	
-	printf "SYMBOLS: %s\n", join(", ", SYMS);
-	# => FOO, BAR, BAZ (in no particular order)
-	
+  use Constant::Generate [qw(
+    FOO BAR BAZ
+  )],
+  allvalues => "VALS",
+  allsyms => "SYMS";
+  
+  printf "VALUES: %s\n", join(", ", VALUES);
+  # => 0, 1, 2 (in no particular order)
+  
+  printf "SYMBOLS: %s\n", join(", ", SYMS);
+  # => FOO, BAR, BAZ (in no particular order)
+
 Or something potentially more useful:
 
-	use Constant::Generate [qw(
-		COUGH
-		SNEEZE
-		HICCUP
-		ZOMBIES
-		)],
-	type => 'bits',
-	allvalues => 'symptoms',
-	mapname => "symptom_str";
-	
-	my $remedies = {
-		COUGH, "Take some honey",
-		SNEEZE, "Buy some tissues",
-		HICCUP, "Drink some water"
-	};
-	
-	my $patient = SNEEZE | COUGH | ZOMBIES;
-	
-	foreach my $symptom (symptoms()) {
-		next unless $patient & $symptom;
-		my $remedy = $remedies->{$symptom};
-		if(!$remedy) {
-			printf "Uh-Oh, we don't have a remedy for %s. Go to a hospital!\n",
-			symptom_str($symptom);
-		} else {
-			printf "You should: %s\n", $remedy;
-		}
-	}
+  use Constant::Generate [qw(
+    COUGH
+    SNEEZE
+    HICCUP
+    ZOMBIES
+    )],
+  type => 'bits',
+  allvalues => 'symptoms',
+  mapname => "symptom_str";
+  
+  my $remedies = {
+    COUGH, "Take some honey",
+    SNEEZE, "Buy some tissues",
+    HICCUP, "Drink some water"
+  };
+  
+  my $patient = SNEEZE | COUGH | ZOMBIES;
+  
+  foreach my $symptom (symptoms()) {
+    next unless $patient & $symptom;
+    my $remedy = $remedies->{$symptom};
+    if(!$remedy) {
+      printf "Uh-Oh, we don't have a remedy for %s. Go to a hospital!\n",
+      symptom_str($symptom);
+    } else {
+      printf "You should: %s\n", $remedy;
+    }
+  }
 
 =over
 
@@ -573,10 +572,10 @@ the enumeration.
 
 =head3 EXPORTING
 
-This module also allows you to define a 'constants' module of your own, from which
-you can export constants to other files in your package. Figuring out the right
-exporter parameters is quite hairy, and the export options can natually
-be a bit tricky.
+This module also allows you to define a 'constants' module of your own,
+from which you can export constants to other files in your package.
+Figuring out the right exporter parameters is quite hairy,
+and the export options can natually be a bit tricky.
 
 In order to succesfully export symbols made by this module, you must specify
 either C<export_ok> or C<export> as hash options to C<import>. These correspond
@@ -585,48 +584,42 @@ to the like-named variables documented by L<Exporter>.
 Additionally, export tags can be specified only if one of the C<export> flags is
 set to true (again, following the behavior of C<Exporter>). The auto-export
 feature is merely one of syntactical convenience, but these three forms are
-effectively equivalent
+effectively equivalent:
 
 Nicest way:
 
-	use base qw(Exporter);
-	our (@EXPORT, %EXPORT_TAGS);
-	use Constant::Generate
-		[qw(FOO BAR BAZ)],
-		
-		export => 1,
-		tag => "some_constants"
-	;
-	
+  use base qw(Exporter);
+  our (@EXPORT, %EXPORT_TAGS);
+  use Constant::Generate
+    [qw(FOO BAR BAZ)],
+    export => 1,
+    tag => "some_constants"
+  ;
+
 A bit more explicit:
 
-	use base qw(Exporter);
-	use Constant::Generate
-		[qw(FOO BAR BAZ)],
-		
-		export => \our @EXPORT,
-		export_tags => \our %EXPORT_TAGS,
-		tag => "some_constants",
-		mapname => "some_constants_to_str",
-	;
+  use base qw(Exporter);
+  use Constant::Generate
+    [qw(FOO BAR BAZ)],
+      export => \our @EXPORT,
+      export_tags => \our %EXPORT_TAGS,
+      tag => "some_constants",
+      mapname => "some_constants_to_str",
+  ;
 
+Or DIY:
 
-Or DIY
-
-	use base qw(Exporter);
-	our @EXPORT;
-	my @SYMS;
-	BEGIN {
-		@SYMS = qw(FOO BAR BAZ);
-	}
-	
-	use Constant::Generate \@SYMS, mapname => "some_constants_to_str";
-	
-	push @EXPORT, @SYMS, "some_constants_to_str";
-	$EXPORT_TAGS{'some_constants'} = [@SYMS, "some_constants_to_str"];
-
-etc.
-
+  use base qw(Exporter);
+  our @EXPORT;
+  my @SYMS;
+  BEGIN {
+    @SYMS = qw(FOO BAR BAZ);
+  }
+  
+  use Constant::Generate \@SYMS, mapname => "some_constants_to_str";
+  
+  push @EXPORT, @SYMS, "some_constants_to_str";
+  $EXPORT_TAGS{'some_constants'} = [@SYMS, "some_constants_to_str"];
 
 Also note that any L</allvalues>, L</allsyms>, or L</mapname>
 subroutines will be exported according
@@ -636,14 +629,13 @@ to whatever specifications were configured for the constants themselves.
 
 The C<dualvar> or C<stringy_var> option can be short-handed by doing the following:
 
-	use Constant::Generate::Dualvar [qw(
-		FOO
-		BAR
-		BAZ
-	)], prefix => 'MY_';
-	
-	MY_FOO eq 'FOO';
-	
+  use Constant::Generate::Dualvar [qw(
+    FOO
+    BAR
+    BAZ
+  )], prefix => 'MY_';
+  MY_FOO eq 'FOO';
+
 etc.
 
 =head1 BUGS & TODO
