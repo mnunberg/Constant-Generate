@@ -1,7 +1,7 @@
 package Constant::Generate;
 use strict;
 use warnings;
-our $VERSION  = '0.16';
+our $VERSION  = '0.17';
 
 use Data::Dumper;
 use Carp qw(confess);
@@ -642,6 +642,10 @@ etc.
 
 It's somewhat ironic that a module which aims to promote the use of symbolic
 constants has all of its configuration options determined by hashes and strings.
+
+=head1 REPOSITORY
+
+L<https://github.com/mnunberg/Constant-Generate>
 
 =head1 AUTHOR & COPYRIGHT
 
