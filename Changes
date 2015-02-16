@@ -1,3 +1,24 @@
+commit 80c1baea15a71d1e27c24a001afd666136d1e116
+Merge: 1ccab34 b94f6bd
+Author: M. Nunberg <mnunberg@users.noreply.github.com>
+Date:   Mon Feb 16 08:43:10 2015 -0500
+
+    Merge pull request #2 from neilbowers/master
+    
+    Added the github repo to the dist metadata and the pod
+
+commit b94f6bd0898d330edbe846bddea6d9332567f42e
+Author: Neil Bowers <neil@bowers.com>
+Date:   Sun Feb 15 22:05:50 2015 +0000
+
+    Added the github repo to the dist metadata and the pod
+
+commit 1ccab34af42fdb75ff91b386ede12b4bd47b61e7
+Author: Mark Nunberg <mnunberg@haskalah.org>
+Date:   Mon Jan 30 12:42:49 2012 -0800
+
+    Version bump, modified Changes to reflect git log
+
 commit 1a4583594fbe1f3d14ec41ab079f51d656e0d7b0
 Merge: 7f3d7a3 579158c
 Author: mnunberg <mnunberg@haskalah.org>
