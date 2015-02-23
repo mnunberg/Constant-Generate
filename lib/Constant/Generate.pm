@@ -518,7 +518,7 @@ symbols or their values:
   allvalues => "VALS",
   allsyms => "SYMS";
   
-  printf "VALUES: %s\n", join(", ", VALUES);
+  printf "VALUES: %s\n", join(", ", VALS);
   # => 0, 1, 2 (in no particular order)
   
   printf "SYMBOLS: %s\n", join(", ", SYMS);
