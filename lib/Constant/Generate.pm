@@ -239,11 +239,11 @@ sub import {
 	
 	if($listname) {
 		my %tmp = reverse %symhash;
-		_gen_constant($reqpkg, $listname, keys %tmp);
+		_gen_constant($reqpkg, $listname, sort { $a <=> $b } keys %tmp);
 		push @symlist, $listname;
 	}
 	if($symsname) {
-		_gen_constant($reqpkg, $symsname, keys %symhash);
+		_gen_constant($reqpkg, $symsname, sort { $symhash{$a} <=> $symhash{$b} } keys %symhash);
 		push @symlist, $symsname;
 	}
 	
